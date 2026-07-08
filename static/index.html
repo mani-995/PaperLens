@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PaperLens — chat with any PDF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <button id="sidebar-toggle" aria-label="Toggle chat list" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+         stroke-linecap="round" aria-hidden="true">
+      <line x1="4" y1="7" x2="20" y2="7"/>
+      <line x1="4" y1="12" x2="20" y2="12"/>
+      <line x1="4" y1="17" x2="20" y2="17"/>
+    </svg>
+  </button>
+
+  <div class="shell">
+    <aside id="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#ffd23f" stroke-width="2.8"
+               stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/>
+          </svg>
+        </span>
+        <span class="brand-name">PaperLens</span>
+      </div>
+
+      <button id="new-chat-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+             stroke-linecap="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        New chat
+      </button>
+
+      <div id="library-search" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search library…" aria-label="Search library">
+      </div>
+
+      <p class="sidebar-heading">Library</p>
+      <nav id="chat-list" aria-label="Saved chats"></nav>
+      <p id="sidebar-empty" hidden>No saved chats yet.<br>Upload a PDF to start one.</p>
+      <p id="search-empty" hidden>No chats match your search.</p>
+    </aside>
+    <div id="scrim" hidden></div>
+
+  <div id="drag-overlay" hidden aria-hidden="true">
+    <div class="drag-card">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <strong>Drop it anywhere</strong>
+      <span>Release to start a new chat</span>
+    </div>
+  </div>
+
+    <main>
+      <span class="blob blob-1" aria-hidden="true"></span>
+      <span class="blob blob-2" aria-hidden="true"></span>
+      <div class="app">
+        <header>
+          <span class="eyebrow">⚡ Answers in seconds, with receipts</span>
+          <h1 class="headline">Chat with any PDF<br>like it's a <span class="hl">friend</span></h1>
+          <p class="tagline">Upload a document, ask anything — every answer shows the exact page it came from.</p>
+        </header>
+
+        <section id="upload-panel">
+          <label id="drop-zone" for="pdf-input">
+            <span class="drop-badge" aria-hidden="true">
+              <svg class="icon icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <svg class="icon icon-file" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </span>
+            <span class="drop-text">
+              <strong id="upload-label">Drop your PDF here</strong>
+              <span id="upload-status">or click to browse · up to 20 MB</span>
+            </span>
+          </label>
+          <input type="file" id="pdf-input" accept="application/pdf,.pdf" hidden>
+        </section>
+
+        <section id="chat-panel" hidden>
+          <div id="starter" hidden>
+            <p class="starter-heading">Try asking…</p>
+            <div class="starter-chips">
+              <button type="button" class="starter-chip">Summarize this in three points</button>
+              <button type="button" class="starter-chip">What are the key findings?</button>
+              <button type="button" class="starter-chip">Explain it like I'm five</button>
+              <button type="button" class="starter-chip">What should I be cautious about?</button>
+            </div>
+          </div>
+          <div id="messages" aria-live="polite"></div>
+          <form id="ask-form" autocomplete="off">
+            <input type="text" id="question" placeholder="Ask a question about the document…"
+                   maxlength="1000" required>
+            <button type="submit" id="ask-btn" aria-label="Ask">
+              <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+              <span class="spinner" aria-hidden="true"></span>
+            </button>
+          </form>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="app.js?v=1"></script>
+</body>
+</html>

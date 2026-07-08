@@ -1,0 +1,21 @@
+# Secrets — never commit. .env.example (committed) documents the shape.
+.env
+.env.example
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Elastic Beanstalk CLI state (keep config.yml so `eb` setup is reproducible)
+.elasticbeanstalk/*
+!.elasticbeanstalk/config.yml
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

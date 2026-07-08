@@ -1,0 +1,16 @@
+# PaperLens — pinned for reproducible builds.
+#
+# NOTE on torch: it is deliberately NOT listed here. The Dockerfile installs
+# the CPU-only wheel first (from https://download.pytorch.org/whl/cpu) so the
+# image stays small (~190MB vs ~2.5GB for the default CUDA build). Locally,
+# `pip install -r requirements.txt` pulls torch transitively via
+# sentence-transformers; on Windows that is CPU-only by default.
+
+fastapi==0.115.6
+python-dotenv==1.0.1
+uvicorn==0.34.0
+python-multipart==0.0.20
+pypdf==5.1.0
+sentence-transformers==3.3.1
+numpy==2.2.1
+google-genai==2.8.0
