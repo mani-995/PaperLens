@@ -49,7 +49,7 @@ function updateStarter() {
   starterEl.hidden = !(askReady && messagesEl.childElementCount === 0);
 }
 
-const UPLOAD_HINT = "or click to browse · up to 2 MB";
+const UPLOAD_HINT = "or click to browse · up to 20 MB";
 
 // ---------- Chat store (localStorage: metadata + messages) ----------
 
@@ -418,9 +418,8 @@ window.addEventListener("drop", (e) => {
   if (e.dataTransfer.files.length) uploadPdf(e.dataTransfer.files[0]);
 });
 
-// Free-tier instance has limited RAM, so reject oversized PDFs client-side
-// before they ever reach /api/upload.
-const MAX_UPLOAD_BYTES = 2 * 1024 * 1024; // 2 MB
+// Reject oversized PDFs client-side before they ever reach /api/upload.
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20 MB
 
 async function uploadPdf(file) {
   if (file.size > MAX_UPLOAD_BYTES) {
@@ -428,7 +427,7 @@ async function uploadPdf(file) {
     dropZone.classList.add("error");
     uploadLabel.textContent = "Drop your PDF here";
     uploadStatus.textContent =
-      "This PDF is too large for the demo (max 2 MB). Please try a smaller document.";
+      "This PDF is too large for the demo (max 20 MB). Please try a smaller document.";
     return;
   }
 
