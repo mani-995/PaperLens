@@ -25,7 +25,7 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 logger = logging.getLogger("paperlens")
 
-MAX_PDF_BYTES = 20 * 1024 * 1024
+MAX_PDF_BYTES = 2 * 1024 * 1024  # 2 MB — matches the client-side guard; free-tier RAM is limited
 STATIC_DIR = PROJECT_ROOT / "static"
 
 state: dict = {}
@@ -67,7 +67,7 @@ async def upload_pdf(file: UploadFile):
         raise HTTPException(status_code=400, detail="Please upload a .pdf file.")
     data = await file.read()
     if len(data) > MAX_PDF_BYTES:
-        raise HTTPException(status_code=413, detail="PDF is larger than 20 MB.")
+        raise HTTPException(status_code=413, detail="PDF is larger than 2 MB.")
 
     try:
         pages = rag.extract_pages(data)
