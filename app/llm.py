@@ -19,7 +19,7 @@ from .rag import Chunk
 logger = logging.getLogger("paperlens")
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-MAX_TOKENS = 1024
+MAX_TOKENS = 2048
 
 # Backoff for AI Studio free-tier rate limits (HTTP 429):
 # waits of ~1s, 2s, 4s, 8s — each plus 0-1s of jitter so concurrent retries
@@ -39,7 +39,9 @@ Rules:
 - If the sources do not contain the answer, say "The document doesn't appear
   to cover this." and briefly note what the sources do cover instead. Do not
   guess.
-- Be concise: a short direct answer first, supporting detail after.
+- Lead with a direct answer, then give supporting detail. For open-ended
+  questions (summaries, key findings, explanations), be thorough and draw on
+  all relevant sources rather than answering in one line.
 """
 
 class RateLimited(Exception):

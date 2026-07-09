@@ -22,7 +22,7 @@ from sentence_transformers import SentenceTransformer
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CHUNK_SIZE = 800  # characters
 CHUNK_OVERLAP = 150  # characters
-TOP_K = 4
+TOP_K = 6
 
 
 @dataclass
