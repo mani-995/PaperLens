@@ -703,29 +703,152 @@ function handleEvent({ event, data }, assistantEl, answerEl) {
   }
 }
 
-// Turn inline [1][2] markers into pill badges. Rebuilds from the full
-// accumulated text each token, so a marker split across two tokens still
-// resolves once complete. Text goes in via text nodes — never innerHTML —
-// so streamed model output can't inject markup.
+// ---------- Markdown answer rendering ----------
+//
+// The model answers in Markdown (bold, bullets, nesting) AND emits inline
+// citations like [1][2]. Those two collide: "[1][2]" is valid Markdown
+// reference-link syntax, so handing the raw text to a parser can turn
+// citations into <a> tags or drop them. So citations never meet the parser:
+//
+//   1. swap every [n] for an opaque random token (Markdown ignores it)
+//   2. parse Markdown -> HTML
+//   3. sanitize that HTML through a strict allowlist (model output is untrusted)
+//   4. walk the sanitized DOM's *text nodes* and swap tokens for <span.cite>
+//      elements built with createElement — pills never travel as HTML strings
+//
+// Rebuilt from the full accumulated text on each token, so a marker or a
+// bold-run split across two tokens resolves once complete.
+
 const CITE = /\[(\d+)\]/g;
-function renderAnswer(answerEl, text) {
-  answerEl.replaceChildren();
-  let last = 0;
-  let match;
-  CITE.lastIndex = 0;
-  while ((match = CITE.exec(text)) !== null) {
-    if (match.index > last) {
-      answerEl.appendChild(document.createTextNode(text.slice(last, match.index)));
+
+// Random per page load so document text can't collide with the placeholder.
+const CITE_TOKEN = "plcite" + Math.random().toString(36).slice(2, 10);
+const CITE_TOKEN_RE = new RegExp(CITE_TOKEN + "(\\d+)" + CITE_TOKEN, "g");
+
+const protectCitations = (text) =>
+  text.replace(CITE, (_m, n) => `${CITE_TOKEN}${n}${CITE_TOKEN}`);
+
+// Strict allowlist. Anything not listed is unwrapped (children kept) or, for
+// the tags below, dropped outright along with its subtree.
+const ALLOWED_TAGS = {
+  P: [], BR: [], HR: [], STRONG: [], B: [], EM: [], I: [], S: [], DEL: [],
+  CODE: [], PRE: [], BLOCKQUOTE: [], UL: [], OL: ["start"], LI: [],
+  H1: [], H2: [], H3: [], H4: [], H5: [], H6: [],
+  TABLE: [], THEAD: [], TBODY: [], TR: [], TH: [], TD: [],
+  A: ["href", "title"],
+};
+const DROP_TAGS = new Set([
+  "SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "FORM", "INPUT",
+  "TEXTAREA", "BUTTON", "SELECT", "LINK", "META", "SVG", "MATH", "BASE",
+]);
+
+function safeHref(value) {
+  try {
+    const url = new URL(value, document.baseURI);
+    return ["http:", "https:", "mailto:"].includes(url.protocol) ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+// Rebuild the parsed HTML into a fresh fragment, copying only allowed nodes.
+function sanitizeNode(node, out) {
+  for (const child of node.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      out.appendChild(document.createTextNode(child.nodeValue));
+      continue;
     }
-    const pill = document.createElement("span");
-    pill.className = "cite";
-    pill.textContent = match[1];
-    answerEl.appendChild(pill);
-    last = CITE.lastIndex;
+    if (child.nodeType !== Node.ELEMENT_NODE) continue; // comments etc.
+    if (DROP_TAGS.has(child.tagName)) continue; // drop element + subtree
+
+    const allowedAttrs = ALLOWED_TAGS[child.tagName];
+    if (!allowedAttrs) {
+      sanitizeNode(child, out); // unknown tag: unwrap, keep its content
+      continue;
+    }
+
+    const el = document.createElement(child.tagName.toLowerCase());
+    for (const name of allowedAttrs) {
+      if (!child.hasAttribute(name)) continue;
+      let value = child.getAttribute(name);
+      if (name === "href") {
+        value = safeHref(value);
+        if (!value) continue; // strips javascript:/data: URLs
+      }
+      el.setAttribute(name, value);
+    }
+    if (el.tagName === "A" && el.hasAttribute("href")) {
+      el.setAttribute("target", "_blank");
+      el.setAttribute("rel", "noopener noreferrer");
+    }
+    sanitizeNode(child, el);
+    out.appendChild(el);
   }
-  if (last < text.length) {
-    answerEl.appendChild(document.createTextNode(text.slice(last)));
+}
+
+function sanitizeToFragment(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const frag = document.createDocumentFragment();
+  sanitizeNode(doc.body, frag);
+  return frag;
+}
+
+// Swap placeholder tokens inside text nodes for real pill elements.
+function restoreCitations(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const targets = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (n.nodeValue.includes(CITE_TOKEN)) targets.push(n);
   }
+  for (const textNode of targets) {
+    const frag = document.createDocumentFragment();
+    const text = textNode.nodeValue;
+    let last = 0;
+    let match;
+    CITE_TOKEN_RE.lastIndex = 0;
+    while ((match = CITE_TOKEN_RE.exec(text)) !== null) {
+      if (match.index > last) {
+        frag.appendChild(document.createTextNode(text.slice(last, match.index)));
+      }
+      const pill = document.createElement("span");
+      pill.className = "cite";
+      pill.textContent = match[1];
+      frag.appendChild(pill);
+      last = CITE_TOKEN_RE.lastIndex;
+    }
+    if (last < text.length) {
+      frag.appendChild(document.createTextNode(text.slice(last)));
+    }
+    textNode.replaceWith(frag);
+  }
+}
+
+// Fallback when marked failed to load: plain text, newlines preserved by CSS.
+function plainFragment(protectedText) {
+  const frag = document.createDocumentFragment();
+  const p = document.createElement("p");
+  p.className = "md-plain";
+  p.textContent = protectedText;
+  frag.appendChild(p);
+  return frag;
+}
+
+function renderAnswer(answerEl, text) {
+  const protectedText = protectCitations(text);
+
+  let frag = null;
+  if (typeof marked !== "undefined" && typeof marked.parse === "function") {
+    try {
+      frag = sanitizeToFragment(marked.parse(protectedText, { gfm: true, breaks: true }));
+    } catch (err) {
+      console.warn("Markdown render failed; falling back to plain text:", err);
+      frag = null;
+    }
+  }
+  if (!frag || !frag.firstElementChild) frag = plainFragment(protectedText);
+
+  restoreCitations(frag);
+  answerEl.replaceChildren(frag);
 }
 
 function renderSources(sources) {

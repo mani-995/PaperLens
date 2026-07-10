@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
   <button id="sidebar-toggle" aria-label="Toggle chat list" aria-expanded="false">
@@ -128,6 +128,8 @@
       </div>
     </main>
   </div>
-  <script src="app.js?v=1"></script>
+  <!-- Vendored (not CDN) so answers still render if the network/CDN is down. -->
+  <script src="vendor/marked.min.js?v=1"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

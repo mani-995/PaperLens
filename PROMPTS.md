@@ -49,10 +49,10 @@ Question: <user's question>
 | **Page numbers in each source header** | Lets the model say "on page 3" naturally and lets the user find the passage in the original PDF, not just in our snippet view. Carried through the whole pipeline (extraction keeps per-page text precisely for this). |
 | **Explicit refusal path** ("The document doesn't appear to cover this") | An escape hatch is the single most effective anti-hallucination lever: without a sanctioned way to say "not here," models answer anyway. Asking it to note what the sources *do* cover keeps the refusal useful rather than dead-ended. |
 | **"Every factual claim needs a citation"** | Forces citation density; otherwise models cite once at the end, which defeats claim-level verifiability. |
-| **Concise, answer-first format** | Streaming UX: the user sees the direct answer within the first second of tokens rather than after a preamble. |
+| **Answer-first, then thorough** | Every answer still leads with a direct response (so streaming shows the point within the first tokens, not after a preamble), but open-ended questions — summaries, key findings, explanations — are explicitly told to be thorough and draw on all relevant sources rather than stop at one line. An earlier "be concise" rule was capping depth on exactly the questions where synthesis is the point; softening it trades a little brevity for substantially more useful answers. |
 | **Question placed *after* the sources** | Recency effect: the last thing in the prompt is the task. Also means the (stable-ish) instruction+source block precedes the varying question — the cache-friendly ordering if this scaled to repeated questions on one document. |
-| **`max_tokens=1024`** | A grounded answer over 4 chunks does not need more; caps cost and latency per question. |
-| **k=4 retrieved chunks** | ~3,200 characters of context — enough to answer section-level questions, small enough that irrelevant chunks don't drown the signal or the token budget. |
+| **`max_tokens=2048`** | Raised from 1024 so thorough answers (multi-point summaries, key-findings lists) aren't truncated mid-thought. Still a firm cap on cost and latency per question — long enough for depth, short enough that a runaway response can't balloon. |
+| **k=6 retrieved chunks** | Raised from 4 (~3,200 chars) to ~4,800 characters of context, giving the model more passages to synthesize across for open-ended questions. The cost is a modest bump in input tokens per request — comfortably within Gemini's context window and negligible on the free tier — accepted deliberately in exchange for answer depth. Chunk size (800) and overlap (150) are unchanged; only k moved. |
 
 ## 4. Sample prompts used during development/testing
 

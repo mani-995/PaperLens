@@ -48,6 +48,23 @@ class RateLimited(Exception):
     """Free-tier quota still exhausted after all backoff retries."""
 
 
+def _unwrap_api_error(exc: BaseException) -> errors.APIError | None:
+    """Find the underlying google-genai APIError, if any.
+
+    The SDK's internal tenacity retry wraps the real error, so a 429 arrives
+    as RetryError(__cause__=ClientError). Walk the cause chain (guarding
+    against cycles) instead of matching only the outermost type.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        if isinstance(current, errors.APIError):
+            return current
+        seen.add(id(current))
+        current = current.__cause__
+    return None
+
+
 _client: genai.Client | None = None
 
 
@@ -101,13 +118,17 @@ async def stream_answer(
                     yielded = True
                     yield chunk.text
             return
-        except errors.APIError as exc:
-            if exc.code == 429 and (yielded or attempt == MAX_RETRIES):
+        except Exception as exc:
+            # google-genai retries internally and re-raises the real APIError
+            # wrapped in tenacity.RetryError, so match on the unwrapped cause
+            # rather than the outermost exception type.
+            api_error = _unwrap_api_error(exc)
+            if api_error is None or api_error.code != 429:
+                raise
+            if yielded or attempt == MAX_RETRIES:
                 # Retries exhausted (or unsafe mid-stream): let the caller
                 # tell the user this is a rate limit, not a generic failure.
-                raise RateLimited from exc
-            if exc.code != 429:
-                raise
+                raise RateLimited from api_error
             delay = min(BASE_DELAY_S * 2**attempt, MAX_DELAY_S) + random.uniform(0, 1)
             logger.warning(
                 "Rate limited (429); retry %d/%d in %.1fs",
