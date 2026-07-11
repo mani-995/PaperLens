@@ -13,6 +13,36 @@ A full-stack retrieval-augmented generation (RAG) app — FastAPI backend, vanil
 - 🗂️ **Multi-chat library** — documents and conversations are saved in your browser
 - 🐳 **Containerized** — one `docker run` to start; deployable to AWS free tier
 
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph browser["Browser"]
+        ui["Vanilla JS UI<br/>streaming + citations"]
+        ls[("localStorage<br/>chats + messages")]
+        idb[("IndexedDB<br/>PDF blobs")]
+        ui --- ls
+        ui --- idb
+    end
+
+    subgraph server["FastAPI server (Docker)"]
+        api["Routes<br/>/api/upload · /api/ask"]
+        rag["RAG pipeline<br/>pypdf → chunk → MiniLM embed<br/>NumPy cosine top-k"]
+        llm["Prompt assembly<br/>+ SSE stream relay"]
+        api --> rag --> llm
+    end
+
+    gemini[["Google Gemini<br/>gemini-2.5-flash"]]
+
+    ui -->|"upload PDF"| api
+    ui -->|"ask question"| api
+    llm -->|"grounded prompt"| gemini
+    gemini -->|"streamed tokens"| llm
+    llm -->|"SSE: tokens + sources"| ui
+```
+
+The backend is stateless and holds a single document's vector index in memory; chat history and PDF bytes are persisted in the browser (localStorage + IndexedDB). The model answers **only** from the retrieved passages, so every response is grounded in the document and traceable to a page.
+
 ## Tech stack
 
 | Layer | Tools |
@@ -57,19 +87,9 @@ docker build -t paperlens .
 docker run -p 8000:8000 -e GEMINI_API_KEY=your-key paperlens
 ```
 
-## How it works
-
-```
-PDF ─► extract + chunk ─► embed (MiniLM) ─► in-memory vector index
-Question ─► embed ─► top-k similar chunks ─► grounded Gemini prompt ─► streamed answer + citations
-```
-
-The model answers **only** from the retrieved passages, so every response is grounded in the document and traceable to a page.
-
 ## Deployment
 
-Deploys to AWS Elastic Beanstalk on a single `t3.micro` (free tier), Docker platform, with the API key set as an environment property. Full guide: [DEPLOY.md](DEPLOY.md).
-
+Deploys to AWS Elastic Beanstalk on a single `t3.micro` (free tier), Docker platform, with the API key set as an environment property.
 ## Configuration
 
 | Variable | Required | Description |
