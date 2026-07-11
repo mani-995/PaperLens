@@ -35,7 +35,6 @@ const dragOverlay = document.getElementById("drag-overlay");
 
 let chatFilter = "";
 
-// Suggested-question chips: fill the input and send.
 starterEl.querySelectorAll(".starter-chip").forEach((chip) => {
   chip.addEventListener("click", () => {
     if (!askReady) return;
@@ -355,7 +354,6 @@ function deleteChat(id) {
   else renderSidebar();
 }
 
-// Rebuild the message panel from a chat's saved history.
 function renderHistory(chat) {
   messagesEl.replaceChildren();
   for (const msg of chat.messages) {
@@ -628,7 +626,7 @@ function removeThinking(assistantEl) {
   if (t) t.remove();
 }
 
-// ===== fetch + SSE parsing (unchanged) =====
+// ===== fetch + SSE parsing =====
 
 async function streamAnswer(question, assistantEl, answerEl) {
   const res = await fetch("/api/ask", {
@@ -758,7 +756,7 @@ function sanitizeNode(node, out) {
       out.appendChild(document.createTextNode(child.nodeValue));
       continue;
     }
-    if (child.nodeType !== Node.ELEMENT_NODE) continue; // comments etc.
+    if (child.nodeType !== Node.ELEMENT_NODE) continue;
     if (DROP_TAGS.has(child.tagName)) continue; // drop element + subtree
 
     const allowedAttrs = ALLOWED_TAGS[child.tagName];
